@@ -1,0 +1,14 @@
+image: node:18
+
+stages:
+  - lint
+  - test
+  - build
+  - docker
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - npm ci
