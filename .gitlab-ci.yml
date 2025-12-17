@@ -19,7 +19,7 @@ before_script:
     - npm run lint
   only:
     - merge_requests
-    - main
+    - devops-ci-solution
 
 test:
   stage: test
@@ -27,7 +27,7 @@ test:
     - npm test -- --watchAll=false
   only:
     - merge_requests
-    - main
+    - devops-ci-solution
 
     build:
   stage: build
@@ -38,7 +38,7 @@ test:
       - build/
   only:
     - merge_requests
-    - main
+    - devops-ci-solution
 
     docker:
   stage: docker
@@ -54,4 +54,4 @@ test:
     - docker images
   only:
     - merge_requests
-    - main
+    - devops-ci-solution
