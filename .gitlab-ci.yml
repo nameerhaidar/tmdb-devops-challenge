@@ -12,3 +12,19 @@ cache:
 
 before_script:
   - npm ci
+
+  lint:
+  stage: lint
+  script:
+    - npm run lint
+  only:
+    - merge_requests
+    - main
+
+test:
+  stage: test
+  script:
+    - npm test -- --watchAll=false
+  only:
+    - merge_requests
+    - main
