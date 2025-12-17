@@ -28,3 +28,14 @@ test:
   only:
     - merge_requests
     - main
+
+    build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - build/
+  only:
+    - merge_requests
+    - main
