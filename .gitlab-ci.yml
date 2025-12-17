@@ -39,3 +39,19 @@ test:
   only:
     - merge_requests
     - main
+
+    docker:
+  stage: docker
+  image: docker:24
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t tmdb-devops-challenge:latest .
+    - docker images
+  only:
+    - merge_requests
+    - main
