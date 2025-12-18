@@ -50,16 +50,16 @@ build:
 # --------------------
 # DOCKER + AZURE PUSH
 # --------------------
-docker_build:
-  stage: docker
-  image: docker:24
-  services:
-    - docker:dind
-  variables:
-    DOCKER_TLS_CERTDIR: ""
-  script:
-    - docker login $AZURE_REGISTRY -u "$AZURE_USERNAME" -p "$AZURE_PASSWORD"
-    - docker build -t $AZURE_REGISTRY/tmdb-app:latest .
-    - docker push $AZURE_REGISTRY/tmdb-app:latest
-  only:
-    - devops-ci-solution
+# docker_build:
+#   stage: docker
+#   image: docker:24
+#   services:
+#     - docker:dind
+#   variables:
+#     DOCKER_TLS_CERTDIR: ""
+#   script:
+#     - docker login $AZURE_REGISTRY -u "$AZURE_USERNAME" -p "$AZURE_PASSWORD"
+#     - docker build -t $AZURE_REGISTRY/tmdb-app:latest .
+#     - docker push $AZURE_REGISTRY/tmdb-app:latest
+#   only:
+#     - devops-ci-solution
