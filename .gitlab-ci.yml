@@ -1,4 +1,6 @@
-image: node:18
+# GitLab CI pipeline for tmdb-devops-challenge
+# Branch: devops-ci-solution
+# Cloud target: Azure (ACR)
 
 stages:
   - lint
@@ -6,52 +8,58 @@ stages:
   - build
   - docker
 
-cache:
-  paths:
-    - node_modules/
-
-before_script:
-  - npm ci
-
-  lint:
+# --------------------
+# LINT STAGE
+# --------------------
+lint:
   stage: lint
+  image: node:18-alpine
   script:
+    - npm ci
     - npm run lint
   only:
-    - merge_requests
     - devops-ci-solution
 
+# --------------------
+# TEST STAGE
+# --------------------
 test:
   stage: test
+  image: node:18-alpine
   script:
+    - npm ci
     - npm test -- --watchAll=false
   only:
-    - merge_requests
     - devops-ci-solution
 
-    build:
+# --------------------
+# BUILD STAGE
+# --------------------
+build:
   stage: build
+  image: node:18-alpine
   script:
+    - npm ci
     - npm run build
   artifacts:
     paths:
       - build/
   only:
-    - merge_requests
     - devops-ci-solution
 
-    docker:
+# --------------------
+# DOCKER + AZURE PUSH
+# --------------------
+docker_build:
   stage: docker
   image: docker:24
   services:
     - docker:dind
   variables:
-    DOCKER_HOST: tcp://docker:2375/
     DOCKER_TLS_CERTDIR: ""
   script:
-    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    - docker build -t tmdb-devops-challenge:latest .
-    - docker images
+    - docker login $AZURE_REGISTRY -u "$AZURE_USERNAME" -p "$AZURE_PASSWORD"
+    - docker build -t $AZURE_REGISTRY/tmdb-app:latest .
+    - docker push $AZURE_REGISTRY/tmdb-app:latest
   only:
-    - merge_requests
     - devops-ci-solution
