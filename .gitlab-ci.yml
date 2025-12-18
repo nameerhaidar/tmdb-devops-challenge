@@ -53,9 +53,9 @@ build:
 
 docker_build:
   stage: docker_build
-  image: docker:24
+  image: docker:28.0
   services:
-    - docker:dind
+    - docker:28.0-dind
   script:
     - docker build -t tmdb-app-local .
     # Save the image to a file so the next stage can use it
@@ -73,15 +73,26 @@ docker_build:
 
 cloud_push:
   stage: cloud_push
-  image: docker:24
+  image: docker:28.0
   services:
-    - docker:dind
+    - name: docker:28.0-dind
   script:
-    # Load the image we saved in the previous stage
+    # 1. Load the image from the artifact
     - docker load < tmdb-app.tar
-    # Login and Push
-    - docker login $CLOUD_REGISTRY -u "$CLOUD_USER" -p "$CLOUD_PASS"
-    - docker tag tmdb-app-local $CLOUD_REGISTRY/tmdb-app:latest
-    - docker push $CLOUD_REGISTRY/tmdb-app:latest
+    
+    # 2. Login using your Azure credentials
+    - echo "$REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$REGISTRY_USER" --password-stdin
+    
+    # 3. Tag with the unique Commit SHA (for traceability/rollbacks)
+    - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
+    
+    # 4. Tag as 'latest' (for the main deployment)
+    - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:latest
+    
+    # 5. Push both tags
+    - docker push $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
+    - docker push $REGISTRY_URL/tmdb-app:latest
+    
+    - echo "Successfully pushed to $REGISTRY_URL"
   only:
     - devops-ci-solution
