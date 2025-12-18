@@ -1,13 +1,14 @@
-FROM node:20-alpine
+# Step 1: Use the ultra-slim Alpine-based Nginx image
+FROM nginx:alpine
 
-WORKDIR /app
+# Step 2: Copy the production build folder from your CI pipeline
+COPY build/ /usr/share/nginx/html
 
-COPY package*.json .
+# Step 3: Configure Nginx to support React Router (SPA fix)
+RUN sed -i '10i \    location / { try_files $uri /index.html; }' /etc/nginx/conf.d/default.conf
 
-RUN npm install
+# Step 4: Expose standard web port
+EXPOSE 80
 
-COPY . .
-
-EXPOSE 3000
-
-CMD [ "npm", "start"]
+# Step 5: Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

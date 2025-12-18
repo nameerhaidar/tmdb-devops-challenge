@@ -6,8 +6,8 @@ stages:
   - lint
   - test
   - build
-  - docker
-
+  - docker_build  
+  - cloud_push
 # --------------------
 # LINT STAGE
 # --------------------
@@ -48,18 +48,40 @@ build:
     - devops-ci-solution
 
 # --------------------
-# DOCKER + AZURE PUSH
+# DOCKER BUILD STAGE
+# -----------
+
+docker_build:
+  stage: docker_build
+  image: docker:24
+  services:
+    - docker:dind
+  script:
+    - docker build -t tmdb-app-local .
+    # Save the image to a file so the next stage can use it
+    - docker save tmdb-app-local > tmdb-app.tar
+  artifacts:
+    paths:
+      - tmdb-app.tar
+    expire_in: 1 hr
+  only:
+    - devops-ci-solution
+
 # --------------------
-# docker_build:
-#   stage: docker
-#   image: docker:24
-#   services:
-#     - docker:dind
-#   variables:
-#     DOCKER_TLS_CERTDIR: ""
-#   script:
-#     - docker login $AZURE_REGISTRY -u "$AZURE_USERNAME" -p "$AZURE_PASSWORD"
-#     - docker build -t $AZURE_REGISTRY/tmdb-app:latest .
-#     - docker push $AZURE_REGISTRY/tmdb-app:latest
-#   only:
-#     - devops-ci-solution
+# THE PUSH STAGE (Uploads to Cloud)
+# -----------
+
+cloud_push:
+  stage: cloud_push
+  image: docker:24
+  services:
+    - docker:dind
+  script:
+    # Load the image we saved in the previous stage
+    - docker load < tmdb-app.tar
+    # Login and Push
+    - docker login $CLOUD_REGISTRY -u "$CLOUD_USER" -p "$CLOUD_PASS"
+    - docker tag tmdb-app-local $CLOUD_REGISTRY/tmdb-app:latest
+    - docker push $CLOUD_REGISTRY/tmdb-app:latest
+  only:
+    - devops-ci-solution

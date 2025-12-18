@@ -37,3 +37,18 @@ The pipeline is structured into four distinct gates to ensure only high-quality 
 To ensure the GitHub submission and GitLab CI runner are always in sync, a multi-remote Git configuration was implemented:
 - **Primary Repo:** GitHub (for code review and submission)
 - **CI Runner:** GitLab (for pipeline execution)
+
+
+## 🐳 Containerization & Security Strategy
+
+### Production-Grade Docker Image
+We have moved away from a development-heavy Node image to a **minimalist Nginx-Alpine** runtime.
+
+**Key Benefits:**
+* **Size Reduction:** Image size decreased from ~450MB to **~25MB** (94% reduction).
+* **Security Hardening:** Removed Node.js, NPM, and source code from the final image to eliminate build-time vulnerabilities.
+* **Performance:** Nginx provides faster static asset delivery and lower memory overhead than a Node.js development server.
+* **Routing Support:** Custom Nginx configuration implemented to support React SPA client-side routing.
+
+### Pipeline Security
+The `cloud_push` stage utilizes **GitLab Masked Variables** to handle registry credentials, ensuring that sensitive access keys are never exposed in the build logs or the source code.
