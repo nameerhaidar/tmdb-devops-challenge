@@ -48,10 +48,7 @@ const Movies = () => {
         }
     }
 
-    const showAll = () => {
-        fetchMovies();
-        setCurrentPage(1);
-    }
+  
 
   return (
     <MoviesWrapper>
