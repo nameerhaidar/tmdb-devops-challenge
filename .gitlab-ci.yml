@@ -1,6 +1,5 @@
-# GitLab CI pipeline for tmdb-devops-challenge
-# Branch: devops-ci-solution
-# Cloud target: Azure (ACR)
+# GitLab CI/CD Pipeline for TMDB DevOps Challenge
+# Target: Azure Container Registry (ACR) & Azure Container Instances (ACI)
 
 stages:
   - lint
@@ -8,8 +7,10 @@ stages:
   - build
   - docker_build  
   - cloud_push
+  - deploy
+
 # --------------------
-# LINT STAGE
+# 1. LINT STAGE
 # --------------------
 lint:
   stage: lint
@@ -21,7 +22,7 @@ lint:
     - devops-ci-solution
 
 # --------------------
-# TEST STAGE
+# 2. TEST STAGE
 # --------------------
 test:
   stage: test
@@ -33,7 +34,7 @@ test:
     - devops-ci-solution
 
 # --------------------
-# BUILD STAGE
+# 3. BUILD STAGE (Compiles React app)
 # --------------------
 build:
   stage: build
@@ -44,21 +45,21 @@ build:
   artifacts:
     paths:
       - build/
+    expire_in: 1 hr
   only:
     - devops-ci-solution
 
 # --------------------
-# DOCKER BUILD STAGE
-# -----------
-
+# 4. DOCKER BUILD (Containerizes with Nginx)
+# --------------------
 docker_build:
   stage: docker_build
   image: docker:28.0
   services:
-    - docker:28.0-dind
+    - name: docker:28.0-dind
   script:
     - docker build -t tmdb-app-local .
-    # Save the image to a file so the next stage can use it
+    # Save image as artifact to ensure bit-for-bit consistency in next stage
     - docker save tmdb-app-local > tmdb-app.tar
   artifacts:
     paths:
@@ -68,31 +69,56 @@ docker_build:
     - devops-ci-solution
 
 # --------------------
-# THE PUSH STAGE (Uploads to Cloud)
-# -----------
-
+# 5. CLOUD PUSH (Uploads to Azure Registry)
+# --------------------
 cloud_push:
   stage: cloud_push
   image: docker:28.0
   services:
     - name: docker:28.0-dind
   script:
-    # 1. Load the image from the artifact
     - docker load < tmdb-app.tar
-    
-    # 2. Login using your Azure credentials
+    # Login using GitLab Masked Variables
     - echo "$REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$REGISTRY_USER" --password-stdin
-    
-    # 3. Tag with the unique Commit SHA (for traceability/rollbacks)
+    # Tag with unique SHA for traceability and 'latest' for deployment
     - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
-    
-    # 4. Tag as 'latest' (for the main deployment)
     - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:latest
-    
-    # 5. Push both tags
     - docker push $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
     - docker push $REGISTRY_URL/tmdb-app:latest
-    
-    - echo "Successfully pushed to $REGISTRY_URL"
   only:
     - devops-ci-solution
+
+# --------------------
+# 6. DEPLOY (Live Cloud Deployment)
+# --------------------
+deploy_to_azure:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:latest
+  script:
+    # Login to Azure using Service Principal
+    - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+    
+    # Deploy to ACI (Azure Container Instances)
+    - |
+      az container create \
+        --resource-group tmdb-resources \
+        --name tmdb-frontend-live \
+        --image $REGISTRY_URL/tmdb-app:latest \
+        --registry-login-server $REGISTRY_URL \
+        --registry-username $REGISTRY_USER \
+        --registry-password $REGISTRY_PASSWORD \
+        --dns-name-label tmdb-app-$(date +%s) \
+        --ports 80 \
+        --dns-name-label-scope SubscriptionReuse \
+        --restart-policy Always
+    
+    # Display the final public URL in the logs
+    - echo "--------------------------------------------------"
+    - echo "DEPLOYMENT SUCCESSFUL"
+    - echo "Access your app at:"
+    - az container show --resource-group tmdb-resources --name tmdb-frontend-live --query ipAddress.fqdn -o tsv
+    - echo "--------------------------------------------------"
+  only:
+    - devops-ci-solution
+  environment:
+    name: production
