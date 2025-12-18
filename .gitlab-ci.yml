@@ -98,7 +98,7 @@ deploy_to_azure:
     # Login to Azure using Service Principal
     - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
     
-    # Deploy to ACI (Azure Container Instances)
+    # Deploy to ACI (Explicitly setting --os-type Linux)
     - |
       az container create \
         --resource-group tmdb-resources \
@@ -109,10 +109,10 @@ deploy_to_azure:
         --registry-password $REGISTRY_PASSWORD \
         --dns-name-label tmdb-app-$(date +%s) \
         --ports 80 \
-        --dns-name-label-scope SubscriptionReuse \
+        --os-type Linux \
         --restart-policy Always
     
-    # Display the final public URL in the logs
+    # Display the final public URL
     - echo "--------------------------------------------------"
     - echo "DEPLOYMENT SUCCESSFUL"
     - echo "Access your app at:"
