@@ -14,7 +14,7 @@ stages:
 # --------------------
 lint:
   stage: lint
-  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm run lint
@@ -26,7 +26,7 @@ lint:
 # --------------------
 test:
   stage: test
-  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm test -- --watchAll=false
@@ -34,11 +34,11 @@ test:
     - devops-ci-solution
 
 # --------------------
-# 3. BUILD STAGE (Compiles React app)
+# 3. BUILD STAGE
 # --------------------
 build:
   stage: build
-  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm run build
@@ -50,16 +50,19 @@ build:
     - devops-ci-solution
 
 # --------------------
-# 4. DOCKER BUILD (Containerizes with Nginx)
+# 4. DOCKER BUILD
 # --------------------
 docker_build:
   stage: docker_build
-  image: sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
+  image: docker:28.0@sha256:77395048d087396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
   services:
-    - name: docker:28.0-dind
+    - name: docker:28.0-dind@sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   script:
     - docker build -t tmdb-app-local .
-    # Save image as artifact to ensure bit-for-bit consistency in next stage
     - docker save tmdb-app-local > tmdb-app.tar
   artifacts:
     paths:
@@ -69,18 +72,20 @@ docker_build:
     - devops-ci-solution
 
 # --------------------
-# 5. CLOUD PUSH (Uploads to Azure Registry)
+# 5. CLOUD PUSH
 # --------------------
 cloud_push:
   stage: cloud_push
-  image: sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
+  image: docker:28.0@sha256:77395048d087396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
   services:
-    - name: docker:28.0-dind
+    - name: docker:28.0-dind@sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   script:
     - docker load < tmdb-app.tar
-    # Login using GitLab Masked Variables
     - echo "$REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$REGISTRY_USER" --password-stdin
-    # Tag with unique SHA for traceability and 'latest' for deployment
     - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
     - docker tag tmdb-app-local $REGISTRY_URL/tmdb-app:latest
     - docker push $REGISTRY_URL/tmdb-app:$CI_COMMIT_SHORT_SHA
@@ -89,16 +94,13 @@ cloud_push:
     - devops-ci-solution
 
 # --------------------
-# 6. DEPLOY (Live Cloud Deployment)
-# --------------------
+# 6. DEPLOY
+# ---------------------
 deploy_to_azure:
   stage: deploy
-  image: sha256:ed67c5ef4d0a87396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
+  image: mcr.microsoft.com/azure-cli@sha256:ed67c5ef4d0a87396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
   script:
-    # Login to Azure using Service Principal
     - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
-    
-    # Deploy to ACI (Added CPU and Memory requirements)
     - |
       az container create \
         --resource-group tmdb-resources \
@@ -113,13 +115,7 @@ deploy_to_azure:
         --cpu 1 \
         --memory 1.5 \
         --restart-policy Always
-    
-    # Display the final public URL
-    - echo "--------------------------------------------------"
-    - echo "DEPLOYMENT SUCCESSFUL"
-    - echo "Access your app at:"
     - az container show --resource-group tmdb-resources --name tmdb-frontend-live --query ipAddress.fqdn -o tsv
-    - echo "--------------------------------------------------"
   only:
     - devops-ci-solution
   environment:
