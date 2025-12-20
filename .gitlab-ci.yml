@@ -14,7 +14,7 @@ stages:
 # --------------------
 lint:
   stage: lint
-  image: node:18-alpine
+  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm run lint
@@ -26,7 +26,7 @@ lint:
 # --------------------
 test:
   stage: test
-  image: node:18-alpine
+  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm test -- --watchAll=false
@@ -38,7 +38,7 @@ test:
 # --------------------
 build:
   stage: build
-  image: node:18-alpine
+  image: node@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
   script:
     - npm ci
     - npm run build
@@ -54,7 +54,7 @@ build:
 # --------------------
 docker_build:
   stage: docker_build
-  image: docker:28.0
+  image: sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
   services:
     - name: docker:28.0-dind
   script:
@@ -73,7 +73,7 @@ docker_build:
 # --------------------
 cloud_push:
   stage: cloud_push
-  image: docker:28.0
+  image: sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
   services:
     - name: docker:28.0-dind
   script:
@@ -93,7 +93,7 @@ cloud_push:
 # --------------------
 deploy_to_azure:
   stage: deploy
-  image: mcr.microsoft.com/azure-cli:latest
+  image: sha256:ed67c5ef4d0a87396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
   script:
     # Login to Azure using Service Principal
     - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"

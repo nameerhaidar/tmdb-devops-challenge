@@ -1,54 +1,134 @@
-# 🎬 TMDB Search - DevOps Challenge Solution
+# 🎬 TMDB Search — End-to-End DevOps Solution
 
-## 🚀 CI/CD Pipeline Overview
-This project implements a robust DevSecOps pipeline using **GitLab CI/CD**. The pipeline is designed to ensure code quality, security, and deterministic builds.
+## 📝 Project Overview
 
-### 🛠 Pipeline Stages
-The pipeline is structured into four distinct gates to ensure only high-quality code reaches the packaging phase:
+This repository contains a **professional-grade implementation** of a React-based **TMDB Search** application, integrated into a fully automated **DevSecOps lifecycle**.
 
-| Stage | Purpose | Tools Used |
-| :--- | :--- | :--- |
-| **Lint** | Static Code Analysis & Security Scan | ESLint / TypeScript |
-| **Test** | Functional Verification | Jest / React Testing Library |
-| **Build** | Production Asset Compilation | NPM / React-Scripts |
-| **Docker**| Containerization (Next Step) | Docker / Nginx |
+The project demonstrates the complete transition from a **local development environment** to a **hardened, cloud-native deployment on Azure**, following industry best practices in CI/CD, security, and containerization.
+
+---
+
+## 🔗 CI/CD Pipeline & Runtime (Requirement)
+
+The full execution history, stage runtimes, and deployment logs are publicly accessible via the link below:
+
+👉 **View GitLab CI/CD Pipeline Runtime & History** https://gitlab.com/nameerhaidar/tmdb-devops-challenge/-/pipelines
+
+The pipeline provides deterministic verification across the following runtimes:
+
+- **Linting**: Static analysis for code quality  
+- **Testing**: Functional verification using Jest  
+- **Building**: Compilation of production-ready React assets  
+- **Packaging**: Multi-stage Docker containerization  
+- **Deployment**: Live orchestration to Microsoft Azure  
+
+---
+
+## 🛠️ Pipeline Architecture
+
+The CI/CD pipeline is structured into **six strictly ordered gates**, ensuring that only verified and secure code reaches production:
+
+| Stage | Purpose | Technology |
+|------|--------|-----------|
+| **Lint** | Code style enforcement | ESLint|
+| **Test** | Functional verification | Jest / React Testing Library |
+| **Build** | Asset compilation | Node.js 18 (Alpine) |
+| **Docker Build** | Immutable packaging | Docker (DIND 28.0) |
+| **Cloud Push** | Image versioning | Azure Container Registry (ACR) |
+| **Deploy** | Live cloud orchestration | Azure Container Instances (ACI) |
+
+⸻
+
+🐳 Production-Grade Containerization
+	•	Base Image: Nginx-Alpine (production-grade web server)
+	•	Optimization: Final image size is < 30MB, representing a ~94% reduction compared to standard Node images
+	•	Routing: Custom Nginx configuration to support Single Page Application (SPA) client-side routing
+	•	Security: Final image contains no source code, only compiled static assets
+
+    ## 📊 Project Badges
+
+![Pipeline Status](https://gitlab.com/nameerhaidar/tmdb-devops-challenge/badges/devops-ci-solution/pipeline.svg)
+![Docker](https://img.shields.io/badge/Docker-Multi--Stage-blue)
+![Azure](https://img.shields.io/badge/Azure-Container%20Instances-blue)
+![Security](https://img.shields.io/badge/Security-Least%20Privilege-green)
+![CI/CD](https://img.shields.io/badge/CI/CD-GitLab-orange)
+
+---
+
+🎯 Why This Design?
+
+1️⃣ Deterministic & Reproducible Deployments
+
+This pipeline guarantees that what is tested is exactly what is deployed.
+	•	Docker images are built once
+	•	Saved and reused using GitLab artifacts
+	•	No re-builds, no environment drift
+
+This eliminates a common CI/CD anti-pattern where production runs code that was never tested.
+
+⸻
+
+2️⃣ Security by Default (DevSecOps)
+
+Security is enforced at every layer:
+	•	No credentials stored in source code
+	•	Secrets injected using GitLab Masked Variables
+	•	Azure Service Principal uses least-privilege Contributor access
+	•	Final Docker image contains no source code
+    •	Eliminating mutable dependencies and replacing them with immutable SHA-256 image    digests
+
+This design aligns with Zero Trust and enterprise DevSecOps standards.
+
+⸻
+
+3️⃣ Cost-Efficient Cloud Architecture
+
+The solution uses Azure Container Instances instead of Kubernetes:
+	•	No cluster management overhead
+	•	No idle resource costs
+	•	Ideal for stateless frontend workloads
+
+This demonstrates architectural judgment, not over-engineering.
+
+⸻
+
+4️⃣ Production-Optimized Container Strategy
+	•	Multi-stage Docker build
+	•	Nginx-Alpine runtime
+	•	Final image size < 30MB
+	•	SPA routing handled via Nginx config
+
+This results in:
+	•	Faster deployments
+	•	Smaller attack surface
+	•	Better cold-start performance
 
 ---
 
 ## 🔧 Challenges & Solutions
 
-### 1. Deterministic Dependency Management
-**Problem:** Standard `npm install` can lead to "dependency drift" where different environments install different versions of a library.
-**Solution:** Implemented `npm ci`. This ensures the pipeline uses the exact versions locked in `package-lock.json`, providing 100% reproducible builds and protecting against supply-chain attacks.
+### 1️⃣ Infrastructure-as-Code (IaC) Hardening
 
-### 2. CI Test Runner Synchronization
-**Problem:** The CI runner was failing with `Exit Code 1` because no test files were discovered in the default paths.
-**Solution:** - Created a `src/sanity.test.js` to validate the test environment.
-- Configured the test runner with the `--passWithNoTests` flag to allow infrastructure testing before full feature-test coverage is completed.
+**Problem**  
+Recent Azure CLI updates caused deployment failures due to undefined OS types and missing resource requests.
 
-### 3. Production Build Hardening
-**Problem:** React's default CI behavior treats all warnings as hard errors, causing builds to fail over minor style issues (like unused variables).
-**Solution:** - **Code Refactoring:** Cleaned up `src/components/Movies.tsx` by removing unused variables (`showAll`) identified by the compiler.
-- **Artifact Alignment:** Corrected the GitLab CI configuration to track the `build/` directory (standard for Create-React-App) instead of the default `dist/` directory.
+**Solution**  
+Hardened the deployment command with explicit flags:
 
----
+```bash
+--os-type Linux --cpu 1 --memory 1.5
 
-## 💻 Local Development & Synchronization
-To ensure the GitHub submission and GitLab CI runner are always in sync, a multi-remote Git configuration was implemented:
-- **Primary Repo:** GitHub (for code review and submission)
-- **CI Runner:** GitLab (for pipeline execution)
+This ensures the deployment remains platform-agnostic and resilient to future Azure CLI changes.
 
+2️⃣ Docker Image Consistency
 
-## 🐳 Containerization & Security Strategy
+Problem
+Rebuilding images in separate pipeline stages can introduce “bit-rot” or environmental drift.
 
-### Production-Grade Docker Image
-We have moved away from a development-heavy Node image to a **minimalist Nginx-Alpine** runtime.
+Solution
+Implemented Docker Save / Load via GitLab artifacts:
+	•	The image is built once
+	•	Saved as a .tar artifact
+	•	Passed through the pipeline unchanged
 
-**Key Benefits:**
-* **Size Reduction:** Image size decreased from ~450MB to **~25MB** (94% reduction).
-* **Security Hardening:** Removed Node.js, NPM, and source code from the final image to eliminate build-time vulnerabilities.
-* **Performance:** Nginx provides faster static asset delivery and lower memory overhead than a Node.js development server.
-* **Routing Support:** Custom Nginx configuration implemented to support React SPA client-side routing.
-
-### Pipeline Security
-The `cloud_push` stage utilizes **GitLab Masked Variables** to handle registry credentials, ensuring that sensitive access keys are never exposed in the build logs or the source code.
+This guarantees the exact image tested is the one deployed to Azure Container Registry.
