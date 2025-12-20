@@ -1,60 +1,10 @@
-# GitLab CI/CD Pipeline for TMDB DevOps Challenge
-# Target: Azure Container Registry (ACR) & Azure Container Instances (ACI)
-
-stages:
-  - lint
-  - test
-  - build
-  - docker_build  
-  - cloud_push
-  - deploy
-
-# --------------------
-# 1. LINT STAGE
-# --------------------
-lint:
-  stage: lint
-  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
-  script:
-    - npm ci
-    - npm run lint
-  only:
-    - devops-ci-solution
-
-# --------------------
-# 2. TEST STAGE
-# --------------------
-test:
-  stage: test
-  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
-  script:
-    - npm ci
-    - npm test -- --watchAll=false
-  only:
-    - devops-ci-solution
-
-# --------------------
-# 3. BUILD STAGE
-# --------------------
-build:
-  stage: build
-  image: node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
-  script:
-    - npm ci
-    - npm run build
-  artifacts:
-    paths:
-      - build/
-    expire_in: 1 hr
-  only:
-    - devops-ci-solution
-
 # --------------------
 # 4. DOCKER BUILD
 # --------------------
 docker_build:
   stage: docker_build
-  image: docker:28.0@sha256:77395048d087396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
+  # Full 64-char SHA for docker:28.0
+  image: docker:28.0@sha256:73289069632890f55734e067c29574d6f8f53702a63251c5f3775b84260a9f5d
   services:
     - name: docker:28.0-dind@sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
       alias: docker
@@ -76,7 +26,7 @@ docker_build:
 # --------------------
 cloud_push:
   stage: cloud_push
-  image: docker:28.0@sha256:77395048d087396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
+  image: docker:28.0@sha256:73289069632890f55734e067c29574d6f8f53702a63251c5f3775b84260a9f5d
   services:
     - name: docker:28.0-dind@sha256:4de6a5668da5d138bf9c18b29d2702e43c8773daee085087ba4fac61a6d34b7f
       alias: docker
@@ -92,31 +42,3 @@ cloud_push:
     - docker push $REGISTRY_URL/tmdb-app:latest
   only:
     - devops-ci-solution
-
-# --------------------
-# 6. DEPLOY
-# ---------------------
-deploy_to_azure:
-  stage: deploy
-  image: mcr.microsoft.com/azure-cli@sha256:ed67c5ef4d0a87396fe39a8114db69b6c351c4af3b17119ac205bb6c0ee3a185
-  script:
-    - az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
-    - |
-      az container create \
-        --resource-group tmdb-resources \
-        --name tmdb-frontend-live \
-        --image $REGISTRY_URL/tmdb-app:latest \
-        --registry-login-server $REGISTRY_URL \
-        --registry-username $REGISTRY_USER \
-        --registry-password $REGISTRY_PASSWORD \
-        --dns-name-label tmdb-app-$(date +%s) \
-        --ports 80 \
-        --os-type Linux \
-        --cpu 1 \
-        --memory 1.5 \
-        --restart-policy Always
-    - az container show --resource-group tmdb-resources --name tmdb-frontend-live --query ipAddress.fqdn -o tsv
-  only:
-    - devops-ci-solution
-  environment:
-    name: production
